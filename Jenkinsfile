@@ -22,7 +22,7 @@ pipeline {
         steps {
             withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
             sh '''
-                aws ecr get-login-password --region $AWS_REGION |
+                aws ecr get-login-password --region $REGION |
                 docker login --username AWS --password-stdin ${IMAGE_URI%:*}
                 docker build -t $IMAGE_URI .
                 docker push $IMAGE_URI
