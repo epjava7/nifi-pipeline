@@ -32,20 +32,20 @@ pipeline {
     }
 
     stage('Deploy to EKS') {
-      steps {
-        withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
-          dir('k8s') {
-            sh '''
-              aws eks update-kubeconfig --region $REGION --name nifi-eks
-              FS_ID=$(terraform -chdir=../terraform output -raw efs_id)
-              sed "s/\${efs_id}/$FS_ID/" efs.yml | kubectl apply -f -
-              kubectl apply -f namespace.yml
-              kubectl apply -f statefulset.yml
-              kubectl apply -f service.yml
-            '''
-          }
+        steps {
+            withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
+            dir('k8s') {
+                sh '''
+                aws eks update-kubeconfig --region $REGION --name nifi-eks
+                FS_ID=$(terraform -chdir=../terraform output -raw efs_id)
+                sed "s/PLACEHOLDER_EFS_ID/${FS_ID}/g" efs.yml | kubectl apply -f -
+                kubectl apply -f namespace.yml
+                kubectl apply -f statefulset.yml
+                kubectl apply -f service.yml
+                '''
+            }
+            }
         }
-      }
     }
 
     stage('Terraform destroy') {
