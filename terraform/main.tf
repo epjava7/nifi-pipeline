@@ -25,7 +25,7 @@ resource "aws_eks_node_group" "default" {
     min_size     = 1
   }
 
-  instance_types  = ["t3.micro"]   
+  instance_types  = ["t3.small"]   
   ami_type        = "AL2_x86_64"
 }
 
@@ -54,6 +54,11 @@ data "aws_iam_policy_document" "eks_trust" {
 resource "aws_iam_role" "eks_node" {
   name = "eksNodeRole"
   assume_role_policy = data.aws_iam_policy_document.eks_node_trust.json
+}
+
+resource "aws_iam_role_policy_attachment" "node_efs" {
+  role       = aws_iam_role.eks_node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEFSCSIDriverPolicy"
 }
 
 data "aws_iam_policy_document" "eks_node_trust" {
