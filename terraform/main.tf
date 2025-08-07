@@ -121,7 +121,10 @@ resource "aws_subnet" "private_b" {
   tags = { Name = "nifi-private-b" }
 }
 
-resource "aws_eip" "nat" { vpc = true }
+resource "aws_eip" "nat" {
+  domain = "vpc" 
+  tags   = { Name = "nat-gateway-eip" }
+}
 
 resource "aws_nat_gateway" "gw" {
   allocation_id = aws_eip.nat.id
