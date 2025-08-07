@@ -98,7 +98,6 @@ resource "aws_route_table" "public" {
   }
 }
 
-
 resource "aws_route_table_association" "pub_a" {
   subnet_id      = aws_subnet.public_a.id
   route_table_id = aws_route_table.public.id
@@ -106,6 +105,44 @@ resource "aws_route_table_association" "pub_a" {
 resource "aws_route_table_association" "pub_b" {
   subnet_id      = aws_subnet.public_b.id
   route_table_id = aws_route_table.public.id
+}
+
+resource "aws_subnet" "private_a" {
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = "10.0.101.0/24"
+  availability_zone = "us-west-1a"
+  tags = { Name = "nifi-private-a" }
+}
+
+resource "aws_subnet" "private_b" {
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = "10.0.102.0/24"
+  availability_zone = "us-west-1c"
+  tags = { Name = "nifi-private-b" }
+}
+
+resource "aws_eip" "nat" { vpc = true }
+
+resource "aws_nat_gateway" "gw" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public_a.id
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.this.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.gw.id
+  }
+}
+
+resource "aws_route_table_association" "priv_a" {
+  subnet_id      = aws_subnet.private_a.id
+  route_table_id = aws_route_table.private.id
+}
+resource "aws_route_table_association" "priv_b" {
+  subnet_id      = aws_subnet.private_b.id
+  route_table_id = aws_route_table.private.id
 }
 
 # efs
@@ -133,11 +170,18 @@ resource "aws_eks_fargate_profile" "nifi" {
   cluster_name           = aws_eks_cluster.this.name
   fargate_profile_name   = "nifi-profile"
   pod_execution_role_arn = aws_iam_role.fargate_pod_execution.arn
-  subnet_ids             = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+  subnet_ids             = [aws_subnet.private_a.id, aws_subnet.private_b.id]
 
-  selector {
-    namespace = "nifi"
-  }
+  selector { namespace = "nifi" }
+}
+
+resource "aws_eks_fargate_profile" "system" {
+  cluster_name           = aws_eks_cluster.this.name
+  fargate_profile_name   = "system"
+  pod_execution_role_arn = aws_iam_role.fargate_pod_execution.arn
+  subnet_ids             = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+
+  selector { namespace = "kube-system" }
 }
 
 # outputs
