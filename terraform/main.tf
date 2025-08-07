@@ -12,6 +12,23 @@ resource "aws_eks_cluster" "this" {
   }
 }
 
+resource "aws_eks_node_group" "default" {
+  cluster_name    = aws_eks_cluster.this.name
+  node_group_name = "nodegroup-ec2"
+  node_role_arn   = aws_iam_role.eks_node.arn
+
+  subnet_ids      = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+
+  scaling_config {
+    desired_size = 1
+    max_size     = 2
+    min_size     = 1
+  }
+
+  instance_types  = ["t3.micro"]   
+  ami_type        = "AL2_x86_64"
+}
+
 resource "aws_eks_addon" "efs_csi" {
   cluster_name = aws_eks_cluster.this.name
   addon_name   = "aws-efs-csi-driver"
@@ -34,33 +51,40 @@ data "aws_iam_policy_document" "eks_trust" {
     }
   }
 }
+resource "aws_iam_role" "eks_node" {
+  name = "eksNodeRole"
+  assume_role_policy = data.aws_iam_policy_document.eks_node_trust.json
+}
+
+data "aws_iam_policy_document" "eks_node_trust" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ec2.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "node_worker" {
+  role       = aws_iam_role.eks_node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+resource "aws_iam_role_policy_attachment" "node_cni" {
+  role       = aws_iam_role.eks_node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+resource "aws_iam_role_policy_attachment" "node_ecr" {
+  role       = aws_iam_role.eks_node.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
 
 resource "aws_iam_role_policy_attachment" "eks_cluster_attach" {
   role       = aws_iam_role.eks_cluster.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
-# ── Fargate execution role ───────────────────────────────────────────────────
-resource "aws_iam_role" "fargate_pod_execution" {
-  name               = "eksFargatePodExecutionRole"
-  assume_role_policy = data.aws_iam_policy_document.pod_exec_trust.json
-}
-
-data "aws_iam_policy_document" "pod_exec_trust" {
-  statement {
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["eks-fargate-pods.amazonaws.com"]
-    }
-  }
-}
-
-resource "aws_iam_role_policy_attachment" "pod_exec_attach" {
-  role       = aws_iam_role.fargate_pod_execution.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy"
-}
 
 # networking
 
@@ -167,26 +191,6 @@ resource "aws_efs_mount_target" "c" {
   security_groups = [aws_eks_cluster.this.vpc_config[0].cluster_security_group_id]
 }
 
-# fargate
-
-resource "aws_eks_fargate_profile" "nifi" {
-  cluster_name           = aws_eks_cluster.this.name
-  fargate_profile_name   = "nifi-profile"
-  pod_execution_role_arn = aws_iam_role.fargate_pod_execution.arn
-  subnet_ids             = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-
-  selector { namespace = "nifi" }
-}
-
-resource "aws_eks_fargate_profile" "system" {
-  cluster_name           = aws_eks_cluster.this.name
-  fargate_profile_name   = "system"
-  pod_execution_role_arn = aws_iam_role.fargate_pod_execution.arn
-  subnet_ids             = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-
-  selector { namespace = "kube-system" }
-}
-
 # outputs
 
 output "cluster_name"      { value = aws_eks_cluster.this.name }
@@ -194,4 +198,5 @@ output "kubeconfig" {
   value = aws_eks_cluster.this.name
   description = "aws eks update-kubeconfig --name"
 }
+
 output "efs_id"            { value = aws_efs_file_system.nifi.id }
