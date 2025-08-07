@@ -201,11 +201,3 @@ resource "aws_efs_mount_target" "c" {
 output "cluster_name" { 
     value = aws_eks_cluster.this.name 
 }
-output "kubeconfig" {
-  value = aws_eks_cluster.this.name
-  description = "aws eks update-kubeconfig --name"
-}
-
-output "efs_id" { 
-    value = aws_efs_file_system.nifi.id 
-}
