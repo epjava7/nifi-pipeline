@@ -1,5 +1,5 @@
 # build
-FROM openjdk:17-jdk-slim
+FROM openjdk:17-jdk-slim AS builder
 RUN apt-get update && apt-get install -y curl unzip 
 RUN curl -L -o /tmp/nifi.zip https://archive.apache.org/dist/nifi/1.26.0/nifi-1.26.0-bin.zip && \
     unzip -q /tmp/nifi.zip -d /opt && mv /opt/nifi-1.26.0 /opt/nifi-build
