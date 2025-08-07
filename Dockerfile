@@ -6,7 +6,7 @@ RUN curl -L -o /tmp/nifi.zip https://archive.apache.org/dist/nifi/1.26.0/nifi-1.
 # COPY conf /opt/nifi-build/conf
 
 # run
-FROM openjdk:17-slim                    
+FROM openjdk:17-jre-slim               
 COPY --from=builder /opt/nifi-build /opt/nifi
 RUN adduser --system --group nifi && chown -R nifi:nifi /opt/nifi
 USER nifi

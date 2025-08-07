@@ -21,12 +21,9 @@ pipeline {
     stage('Build & push image') {
         steps {
             withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
-            sh '''
-                aws ecr get-login-password --region $REGION |
-                docker login --username AWS --password-stdin ${IMAGE_URI%:*}
-                docker build -t $IMAGE_URI .
-                docker push $IMAGE_URI
-            '''
+            sh 'aws ecr get-login-password --region $REGION | docker login --username AWS --password-stdin ${IMAGE_URI%:*}'
+            sh 'docker build -t $IMAGE_URI .'
+            sh 'docker push $IMAGE_URI'
             }
         }
     }
@@ -34,16 +31,13 @@ pipeline {
     stage('Deploy to EKS') {
         steps {
             withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
-            dir('k8s') {
-                sh '''
-                aws eks update-kubeconfig --region $REGION --name nifi-eks
-                FS_ID=$(terraform -chdir=../terraform output -raw efs_id)
-                sed "s/PLACEHOLDER_EFS_ID/${FS_ID}/g" efs.yml | kubectl apply -f -
-                kubectl apply -f namespace.yml
-                kubectl apply -f statefulset.yml
-                kubectl apply -f service.yml
-                '''
-            }
+                dir('k8s') {
+                    sh 'aws eks update-kubeconfig --region $REGION --name nifi-eks'
+                    sh 'FS_ID=$(terraform -chdir=../terraform output -raw efs_id) && sed "s/EFS_ID/${FS_ID}/g" efs.yml | kubectl apply -f -'
+                    sh 'kubectl apply -f namespace.yml'
+                    sh 'kubectl apply -f statefulset.yml'
+                    sh 'kubectl apply -f service.yml'
+                }
             }
         }
     }
