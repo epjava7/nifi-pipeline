@@ -2,7 +2,7 @@ pipeline {
   agent any
   environment {
     REGION = 'us-west-1'
-    URI  = '549103799643.dkr.ecr.us-west-1.amazonaws.com/nifi-1-26-0:latest'
+    IMAGE_URI  = '549103799643.dkr.ecr.us-west-1.amazonaws.com/nifi-1-26-0:latest'
   }
 
   stages {
