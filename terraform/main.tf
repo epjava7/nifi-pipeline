@@ -58,7 +58,7 @@ resource "aws_iam_role" "eks_node" {
 
 resource "aws_iam_role_policy_attachment" "node_efs" {
   role       = aws_iam_role.eks_node.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEFSCSIDriverPolicy"
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy"
 }
 
 data "aws_iam_policy_document" "eks_node_trust" {
