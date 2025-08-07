@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: nifi
+  namespace: nifi
+spec:
+  serviceName: nifi-headless
+  replicas: 1
+  selector:
+    matchLabels: { app: nifi }
+  volumeClaimTemplates:
+  - metadata:
+      name: nifi-data
+    spec:
+      storageClassName: efs-sc
+      accessModes: [ReadWriteMany]
+      resources:
+        requests:
+          storage: 5Gi
+  template:
+    metadata:
+      labels: { app: nifi }
+    spec:
+      containers:
+      - name: nifi
+        image: 549103799643.dkr.ecr.us-west-1.amazonaws.com/nifi-1-26-0:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: NIFI_WEB_HTTP_HOST               
+          valueFrom: { fieldRef: { fieldPath: status.podIP } }
+        volumeMounts:
+        - name: nifi-data
+          mountPath: /opt/nifi/data

@@ -1,0 +1,150 @@
+# eks cluster
+
+resource "aws_eks_cluster" "this" {
+  name     = "nifi-eks"
+  role_arn = aws_iam_role.eks_cluster.arn
+  version  = "1.30"
+
+  vpc_config {
+    subnet_ids              = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    endpoint_public_access  = true
+    endpoint_private_access = false
+  }
+}
+
+resource "aws_eks_addon" "efs_csi" {
+  cluster_name = aws_eks_cluster.this.name
+  addon_name   = "aws-efs-csi-driver"
+}
+
+# iam
+
+resource "aws_iam_role" "eks_cluster" {
+  name = "eksClusterRole"
+  assume_role_policy = data.aws_iam_policy_document.eks_trust.json
+}
+
+data "aws_iam_policy_document" "eks_trust" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["eks.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "eks_cluster_attach" {
+  role       = aws_iam_role.eks_cluster.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+# ── Fargate execution role ───────────────────────────────────────────────────
+resource "aws_iam_role" "fargate_pod_execution" {
+  name               = "eksFargatePodExecutionRole"
+  assume_role_policy = data.aws_iam_policy_document.pod_exec_trust.json
+}
+
+data "aws_iam_policy_document" "pod_exec_trust" {
+  statement {
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["eks-fargate-pods.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "pod_exec_attach" {
+  role       = aws_iam_role.fargate_pod_execution.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSFargatePodExecutionRolePolicy"
+}
+
+# networking
+
+resource "aws_vpc" "this" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+  tags = { Name = "nifi-vpc" }
+}
+
+resource "aws_subnet" "public_a" {
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = "10.0.1.0/24"
+  availability_zone       = "us-west-1a"
+  map_public_ip_on_launch = true
+}
+
+resource "aws_subnet" "public_b" {
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = "10.0.2.0/24"
+  availability_zone       = "us-west-1c"
+  map_public_ip_on_launch = true
+}
+
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.this.id
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.this.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.gw.id
+  }
+}
+
+
+resource "aws_route_table_association" "pub_a" {
+  subnet_id      = aws_subnet.public_a.id
+  route_table_id = aws_route_table.public.id
+}
+resource "aws_route_table_association" "pub_b" {
+  subnet_id      = aws_subnet.public_b.id
+  route_table_id = aws_route_table.public.id
+}
+
+# efs
+
+resource "aws_efs_file_system" "nifi" {
+  lifecycle_policy { transition_to_ia = "AFTER_30_DAYS" }
+  throughput_mode  = "bursting"
+  tags = { Name = "nifi-efs" }
+}
+
+resource "aws_efs_mount_target" "a" {
+  file_system_id  = aws_efs_file_system.nifi.id
+  subnet_id       = aws_subnet.public_a.id
+  security_groups = [aws_eks_cluster.this.vpc_config[0].cluster_security_group_id]
+}
+resource "aws_efs_mount_target" "c" {
+  file_system_id  = aws_efs_file_system.nifi.id
+  subnet_id       = aws_subnet.public_b.id
+  security_groups = [aws_eks_cluster.this.vpc_config[0].cluster_security_group_id]
+}
+
+# fargate
+
+resource "aws_eks_fargate_profile" "nifi" {
+  cluster_name           = aws_eks_cluster.this.name
+  fargate_profile_name   = "nifi-profile"
+  pod_execution_role_arn = aws_iam_role.fargate_pod_execution.arn
+  subnet_ids             = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+
+  selector {
+    namespace = "nifi"
+  }
+}
+
+# outputs
+
+output "cluster_name"      { value = aws_eks_cluster.this.name }
+output "kubeconfig" {
+  value = aws_eks_cluster.this.name
+  description = "Run ⇒ aws eks update-kubeconfig --name ${value}"
+}
+output "efs_id"            { value = aws_efs_file_system.nifi.id }
