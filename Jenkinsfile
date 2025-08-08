@@ -43,13 +43,20 @@ pipeline {
     stage('Deploy to EKS') {
         steps {
             withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
-                dir('k8s') {
-                    sh 'aws eks update-kubeconfig --region $REGION --name nifi-eks'
-                    sh 'FS_ID=$(terraform -chdir=../terraform output -raw efs_id) && sed "s/EFS_ID/${FS_ID}/g" efs.yml | kubectl apply -f -'
-                    sh 'kubectl apply -f namespace.yml'
-                    sh 'kubectl apply -f statefulset.yml'
-                    sh 'kubectl apply -f service.yml'
-                }
+            dir('k8s') {
+                sh 'aws eks update-kubeconfig --region $REGION --name nifi-eks'
+                sh '''
+                if ! kubectl get storageclass efs-sc >/dev/null 2>&1; then
+                    FS_ID=$(terraform -chdir=../terraform output -raw efs_id)
+                    sed "s/EFS_ID/${FS_ID}/g" efs.yml | kubectl apply -f -
+                else
+                    echo "StorageClass efs-sc already exists, skipping"
+                fi
+                '''
+                sh 'kubectl apply -f namespace.yml'
+                sh 'kubectl apply -f statefulset.yml'
+                sh 'kubectl apply -f service.yml'
+            }
             }
         }
     }
