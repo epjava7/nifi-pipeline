@@ -11,11 +11,17 @@ pipeline {
       steps {
         dir('terraform') {
           withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
-            sh 'terraform init -input=false -force-copy'
+            sh 'terraform init -input=false -migrate-state -force-copy'
             sh 'terraform apply -auto-approve'
           }
         }
       }
+    }
+
+    stage('clean workspace') {
+        steps {
+            cleanWs()
+        }
     }
 
     stage('Build & push image') {
