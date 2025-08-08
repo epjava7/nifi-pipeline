@@ -155,9 +155,12 @@ resource "aws_eip" "nat" {
   tags = { Name = "nat-gateway-eip" }
 }
 
-resource "aws_nat_gateway" "gw" {
-  allocation_id = aws_eip.nat.id
-  subnet_id = aws_subnet.public_a.id
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.this.id
+
+  depends_on = [
+    aws_nat_gateway.gw
+  ]
 }
 
 resource "aws_route_table" "private" {
