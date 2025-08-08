@@ -46,7 +46,7 @@ pipeline {
         steps {
             dir('terraform') {
                 withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-devops']]) {
-                    input message: 'terraform destroy?', ok: 'Proceed'
+                    input message: 'terraform destroy?', ok: 'Destroy'
                     sh 'terraform destroy -auto-approve'
                 }
             }

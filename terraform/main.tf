@@ -195,9 +195,3 @@ resource "aws_efs_mount_target" "c" {
   subnet_id = aws_subnet.public_b.id
   security_groups = [aws_eks_cluster.this.vpc_config[0].cluster_security_group_id]
 }
-
-# outputs
-
-output "cluster_name" { 
-    value = aws_eks_cluster.this.name 
-}

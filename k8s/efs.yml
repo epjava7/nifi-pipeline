@@ -4,8 +4,4 @@ metadata:
   name: efs-sc
 provisioner: efs.csi.aws.com
 parameters:
-  provisioningMode: efs-ap
   fileSystemId: EFS_ID
-  directoryPerms: "700"
-reclaimPolicy: Retain
-volumeBindingMode: Immediate

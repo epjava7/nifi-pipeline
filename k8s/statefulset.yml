@@ -8,6 +8,7 @@ spec:
   replicas: 1
   selector:
     matchLabels: { app: nifi }
+
   volumeClaimTemplates:
   - metadata:
       name: nifi-data
@@ -17,6 +18,7 @@ spec:
       resources:
         requests:
           storage: 5Gi
+          
   template:
     metadata:
       labels: { app: nifi }

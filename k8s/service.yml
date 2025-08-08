@@ -3,6 +3,8 @@ kind: Service
 metadata:
   name: nifi-lb
   namespace: nifi
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-internal: "true"
 spec:
   type: LoadBalancer
   selector: { app: nifi }
