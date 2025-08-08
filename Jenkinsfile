@@ -7,6 +7,18 @@ pipeline {
 
   stages {
 
+    stage('clean workspace') {
+        steps {
+            cleanWs()
+        }
+    }
+
+    stage('git checkout') {       
+        steps {
+            checkout scm               
+        }
+    }
+
     stage('Terraform apply') {
       steps {
         dir('terraform') {
@@ -16,12 +28,6 @@ pipeline {
           }
         }
       }
-    }
-
-    stage('clean workspace') {
-        steps {
-            cleanWs()
-        }
     }
 
     stage('Build & push image') {
