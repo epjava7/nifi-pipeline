@@ -61,6 +61,25 @@ pipeline {
         }
     }
 
+    stage('K8s teardown') {
+        steps {
+            withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
+            sh '''
+                aws eks update-kubeconfig --region $REGION --name nifi-eks
+                kubectl delete -n nifi svc nifi-lb --ignore-not-found
+                kubectl delete -n nifi statefulset nifi --ignore-not-found
+                kubectl delete -n nifi pvc --all --ignore-not-found
+                kubectl delete ns nifi --ignore-not-found --wait=true
+                for i in {1..30}; do
+                kubectl get svc nifi-lb -n nifi >/dev/null 2>&1 || break
+                sleep 10
+                done
+                sleep 30
+            '''
+            }
+        }
+    }
+
     stage('Terraform destroy') {
         steps {
             dir('terraform') {
