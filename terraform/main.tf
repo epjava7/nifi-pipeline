@@ -116,6 +116,10 @@ resource "aws_subnet" "public_b" {
 
 resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.this.id
+
+  depends_on = [
+    aws_nat_gateway.gw
+  ]
 }
 
 resource "aws_route_table" "public" {
@@ -153,14 +157,6 @@ resource "aws_subnet" "private_b" {
 resource "aws_eip" "nat" {
   domain = "vpc"
   tags = { Name = "nat-gateway-eip" }
-}
-
-resource "aws_internet_gateway" "gw" {
-  vpc_id = aws_vpc.this.id
-
-  depends_on = [
-    aws_nat_gateway.gw
-  ]
 }
 
 resource "aws_route_table" "private" {
