@@ -45,7 +45,7 @@ pipeline {
             withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
                 dir('k8s') {
                     sh '''
-            set -euo pipefail
+            set -eu
 
             aws eks update-kubeconfig --region $REGION --name nifi-eks
             kubectl apply -f namespace.yml
