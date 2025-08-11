@@ -45,42 +45,37 @@ pipeline {
             withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
             dir('k8s') {
                 sh 'aws eks update-kubeconfig --region $REGION --name nifi-eks'
-                sh '''
-                if ! kubectl get storageclass efs-sc >/dev/null 2>&1; then
-                    FS_ID=$(terraform -chdir=../terraform output -raw efs_id)
-                    sed "s/EFS_ID/${FS_ID}/g" efs.yml | kubectl apply -f -
-                else
-                    echo "StorageClass efs-sc already exists, skipping"
-                fi
-                '''
                 sh 'kubectl apply -f namespace.yml'
-                sh 'kubectl apply -f statefulset.yml'
+                sh '''
+                kubectl apply -f namespace.yml
+                FS_ID=$(terraform -chdir=../terraform output -raw efs_id)
+                SC_NAME="efs-sc-${FS_ID}"
+                '''
+                sh 'sed "s/SC_NAME/${SC_NAME}/g" statefulset.yml | kubectl apply -f -'
                 sh 'kubectl apply -f service.yml'
+
+                sh 'kubectl -n nifi rollout status sts/nifi --timeout=10m'
+                sh 'kubectl -n nifi get svc nifi-lb -o wide'
             }
             }
         }
     }
 
-    stage('Start teardown') {
-        steps {
-            script {
-                input message: 'Cleanup?', ok: 'Yes'
-            }
-        }
-    }
 
-    stage('K8s teardown') {
+    stage('K8s delete') {
         steps {
             withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
+            input message: 'Delete K8s', ok: 'Delete'
             sh '''
-                set -e
-                aws eks update-kubeconfig --region $REGION --name nifi-eks
-                LB_DNS=$(kubectl get svc nifi-lb -n nifi -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
-                kubectl delete svc nifi-lb -n nifi --ignore-not-found
-                kubectl delete statefulset nifi -n nifi --ignore-not-found
-                kubectl delete pvc -n nifi --all --ignore-not-found
-                kubectl delete ns nifi --ignore-not-found --wait=true
-                sleep 60
+            aws eks update-kubeconfig --region $REGION --name nifi-eks
+            kubectl -n nifi scale sts nifi --replicas=0
+            kubectl -n nifi delete svc nifi-lb --ignore-not-found
+
+            sleep 30
+
+            kubectl -n nifi delete statefulset nifi --ignore-not-found --wait=true || true
+            kubectl -n nifi delete pvc --all --ignore-not-found || true
+            kubectl -n nifi delete ns nifi --ignore-not-found --wait=true || true
             '''
             }
         }
