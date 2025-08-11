@@ -38,14 +38,6 @@ spec:
         - containerPort: 8080
           name: http
 
-        env:
-        - name: NIFI_WEB_HTTPS_PORT
-          value: ""
-        - name: NIFI_WEB_HTTPS_HOST
-          value: ""
-        - name: NIFI_WEB_PROXY_HOST
-          value: ""
-
         volumeMounts:
         - name: nifi-data
           mountPath: /opt/nifi/data
