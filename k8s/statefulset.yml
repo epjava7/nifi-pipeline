@@ -36,21 +36,7 @@ spec:
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
-          name: http
-
-        env:
-        - name: NIFI_WEB_HTTP_PORT
-          value: "8080"    
-        - name: NIFI_WEB_HTTPS_PORT
-          value: ""         
-        - name: NIFI_WEB_HTTPS_HOST
-          value: ""     
-        - name: NIFI_WEB_PROXY_HOST
-          value: ""        
-        - name: SINGLE_USER_CREDENTIALS
-          value: ""
-        - name: SINGLE_USER_PASSWORD
-          value: ""
+          name: http    
 
         volumeMounts:
         - name: nifi-data
