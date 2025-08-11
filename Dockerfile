@@ -13,4 +13,4 @@
 # CMD ["run"]
 
 FROM apache/nifi:1.26.0  
-COPY conf/nifi.properties /opt/nifi/conf/
+COPY conf/nifi.properties /opt/nifi/nifi-current/conf/nifi.properties
