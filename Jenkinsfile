@@ -51,10 +51,14 @@ pipeline {
                 SC_NAME="efs-sc-${FS_ID}"
                 echo "EFS_ID = ${FS_ID}"
 
-                sed -e "s/EFS_ID/${FS_ID}/g" -e "s/SC_NAME/${SC_NAME}/g" efs.yml | kubectl apply -f -
+                if ! kubectl get sc "${SC_NAME}" >/dev/null 2>&1; then
+                    sed -e "s/EFS_ID/${FS_ID}/g" -e "s/SC_NAME/${SC_NAME}/g" efs.yml | kubectl apply -f -
+                else
+                    echo "efs ${SC_NAME} exists"
+                fi
                 '''
                 sh 'kubectl apply -f service-headless.yml'
-                
+
                 sh 'sed "s/SC_NAME/${SC_NAME}/g" statefulset.yml | kubectl apply -f -'
                 sh 'kubectl apply -f service.yml'
 
