@@ -43,12 +43,26 @@ spec:
           mountPath: /opt/nifi/data
 
         startupProbe:
-          tcpSocket:
+          httpGet:
+            path: /nifi-api/system-diagnostics
             port: 8080
+            scheme: HTTP
           periodSeconds: 15
           failureThreshold: 40
+
         readinessProbe:
-          tcpSocket:
+          httpGet:
+            path: /nifi-api/system-diagnostics
             port: 8080
+            scheme: HTTP
           periodSeconds: 10
           failureThreshold: 12
+
+        livenessProbe:
+          httpGet:
+            path: /nifi-api/system-diagnostics
+            port: 8080
+            scheme: HTTP
+          periodSeconds: 30
+          failureThreshold: 3
+          initialDelaySeconds: 90
