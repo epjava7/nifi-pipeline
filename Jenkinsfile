@@ -61,6 +61,14 @@ pipeline {
         }
     }
 
+    stage('Start teardown') {
+        steps {
+            script {
+                input message: 'Cleanup?', ok: 'Yes'
+            }
+        }
+    }
+
     stage('K8s teardown') {
         steps {
             withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
