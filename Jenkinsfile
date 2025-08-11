@@ -15,6 +15,16 @@ pipeline {
       steps { checkout scm }
     }
 
+    stage('docker prune') {
+        steps {
+            sh '''
+            docker system prune -af || true
+            docker builder prune -af || true
+            '''
+        }
+    }
+
+
     stage('Terraform apply') {
       steps {
         dir('terraform') {

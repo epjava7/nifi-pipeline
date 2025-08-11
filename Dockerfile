@@ -12,22 +12,8 @@
 # ENTRYPOINT ["bin/nifi.sh"]
 # CMD ["run"]
 
+# FROM apache/nifi:1.26.0  
+# COPY conf/nifi.properties /opt/nifi/nifi-current/conf/nifi.properties
 
-FROM apache/nifi:1.26.0 AS base
-
-FROM eclipse-temurin:17-jdk-jammy
-RUN groupadd -g 1000 nifi \
- && useradd -u 1000 -g 1000 -m -s /bin/bash nifi
-ENV NIFI_BASE_DIR=/opt/nifi \
-    NIFI_HOME=/opt/nifi/nifi-current \
-    NIFI_TOOLKIT_HOME=/opt/nifi/nifi-toolkit-current \
-    NIFI_PID_DIR=/opt/nifi/nifi-current/run \
-    NIFI_LOG_DIR=/opt/nifi/nifi-current/logs \
-    JAVA_HOME=/opt/java/openjdk \
-    PATH=/opt/java/openjdk/bin:$PATH
-COPY --from=base /opt/nifi /opt/nifi
-RUN chown -R nifi:nifi /opt/nifi
+FROM apache/nifi:1.26.0
 COPY --chown=nifi:nifi conf/nifi.properties ${NIFI_HOME}/conf/nifi.properties
-WORKDIR ${NIFI_HOME}
-USER nifi
-ENTRYPOINT ["../scripts/start.sh"]
