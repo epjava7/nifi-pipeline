@@ -13,10 +13,8 @@ spec:
   volumeClaimTemplates:
   - metadata:
       name: nifi-data
-      labels:
-        app: nifi
     spec:
-      storageClassName: SC_NAME         
+      storageClassName: SC_NAME
       accessModes: ["ReadWriteMany"]
       resources:
         requests:
@@ -28,7 +26,6 @@ spec:
         app: nifi
     spec:
       terminationGracePeriodSeconds: 120
-
       securityContext:
         fsGroup: 1000
         fsGroupChangePolicy: OnRootMismatch
@@ -41,6 +38,24 @@ spec:
         - containerPort: 8080
           name: http
 
+        env:
+        - name: NIFI_WEB_HTTP_PORT
+          value: "8080"
+        - name: NIFI_WEB_HTTP_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: NIFI_JVM_HEAP_INIT
+          value: "1g"
+        - name: NIFI_JVM_HEAP_MAX
+          value: "2g"
+        - name: NIFI_FLOWFILE_REPOSITORY_DIRECTORY
+          value: "/opt/nifi/data/flowfile_repository"
+        - name: NIFI_CONTENT_REPOSITORY_DIRECTORY_DEFAULT
+          value: "/opt/nifi/data/content_repository"
+        - name: NIFI_PROVENANCE_REPOSITORY_DIRECTORY_DEFAULT
+          value: "/opt/nifi/data/provenance_repository"
+
         volumeMounts:
         - name: nifi-data
           mountPath: /opt/nifi/data
@@ -49,9 +64,9 @@ spec:
           tcpSocket:
             port: 8080
           periodSeconds: 15
-          failureThreshold: 30
+          failureThreshold: 40
         readinessProbe:
           tcpSocket:
             port: 8080
           periodSeconds: 10
-          failureThreshold: 10
+          failureThreshold: 12
