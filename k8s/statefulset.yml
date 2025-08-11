@@ -39,22 +39,12 @@ spec:
           name: http
 
         env:
-        - name: NIFI_WEB_HTTP_PORT
-          value: "8080"
-        - name: NIFI_WEB_HTTP_HOST
-          valueFrom:
-            fieldRef:
-              fieldPath: status.podIP
-        - name: NIFI_JVM_HEAP_INIT
-          value: "1g"
-        - name: NIFI_JVM_HEAP_MAX
-          value: "2g"
-        - name: NIFI_FLOWFILE_REPOSITORY_DIRECTORY
-          value: "/opt/nifi/data/flowfile_repository"
-        - name: NIFI_CONTENT_REPOSITORY_DIRECTORY_DEFAULT
-          value: "/opt/nifi/data/content_repository"
-        - name: NIFI_PROVENANCE_REPOSITORY_DIRECTORY_DEFAULT
-          value: "/opt/nifi/data/provenance_repository"
+        - name: NIFI_WEB_HTTPS_PORT
+          value: ""
+        - name: NIFI_WEB_HTTPS_HOST
+          value: ""
+        - name: NIFI_WEB_PROXY_HOST
+          value: ""
 
         volumeMounts:
         - name: nifi-data
