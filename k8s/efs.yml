@@ -6,4 +6,6 @@ provisioner: efs.csi.aws.com
 volumeBindingMode: WaitForFirstConsumer
 parameters:
   fileSystemId: EFS_ID
+  directoryPerms: "700"
+  provisioningMode: efs-ap
 reclaimPolicy: Delete
