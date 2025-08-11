@@ -30,37 +30,40 @@ pipeline {
         dir('terraform') {
           withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
             sh '''#!/usr/bin/env bash
-set -euo pipefail
-terraform init -input=false -migrate-state -force-copy
-terraform apply -auto-approve
-'''
+            set -euo pipefail
+            terraform init -input=false -migrate-state -force-copy
+            terraform apply -auto-approve
+            '''
           }
         }
       }
     }
 
-    stage('Build & push image') {
-      steps {
-        withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
-          sh '''#!/usr/bin/env bash
-set -euo pipefail
-REPO=${IMAGE_URI%:*}
-COMMIT=$(git rev-parse --short HEAD)
+//     stage('Build & push image') {
+//       steps {
+//         withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
+//           sh '''#!/usr/bin/env bash
+// set -euo pipefail
+// REPO=${IMAGE_URI%:*}
+// COMMIT=$(git rev-parse --short HEAD)
 
-aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REPO"
+// aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$REPO"
 
-docker build -t "$REPO:$COMMIT" -t "$IMAGE_URI" .
-docker push "$REPO:$COMMIT"
-docker push "$IMAGE_URI"
-'''
-        }
-      }
-    }
+// docker build -t "$REPO:$COMMIT" -t "$IMAGE_URI" .
+// docker push "$REPO:$COMMIT"
+// docker push "$IMAGE_URI"
+// '''
+//         }
+//       }
+//     }
 
     stage('Deploy to EKS') {
         steps {
             sh '''
-            kubectl apply -f k8s/ 
+            # kubectl apply -f k8s/efs.yml || true
+            kubectl apply -f k8s/namespace.yml
+            kubectl apply -f k8s/services.yml
+            kubectl apply -f k8s/statefulset.yml
             kubectl -n nifi rollout status statefulset/nifi --timeout=5m
             '''
         }
@@ -163,12 +166,22 @@ kubectl -n nifi delete ns nifi --ignore-not-found --wait=true || true
           withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
             input message: 'terraform destroy?', ok: 'Destroy'
             sh '''#!/usr/bin/env bash
-set -euo pipefail
-terraform destroy -auto-approve
-'''
+            set -euo pipefail
+            terraform destroy -auto-approve
+            '''
           }
         }
       }
+    }
+  }
+
+  post {
+    always {
+        sh '''
+        kubectl -n nifi scale sts nifi --replicas=0 --timeout=120s || true
+        kubectl -n nifi delete sts nifi --cascade=orphan --wait=true || true
+        kubectl -n nifi delete svc nifi-lb nifi-headless || true
+        '''
     }
   }
 }
