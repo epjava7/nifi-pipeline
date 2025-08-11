@@ -38,31 +38,31 @@ spec:
         - containerPort: 8080
           name: http
 
+        env:
+        - name: NIFI_WEB_HTTP_PORT
+          value: "8080"    
+        - name: NIFI_WEB_HTTPS_PORT
+          value: ""         
+        - name: NIFI_WEB_HTTPS_HOST
+          value: ""     
+        - name: NIFI_WEB_PROXY_HOST
+          value: ""        
+        - name: SINGLE_USER_CREDENTIALS
+          value: ""
+        - name: SINGLE_USER_PASSWORD
+          value: ""
+
         volumeMounts:
         - name: nifi-data
           mountPath: /opt/nifi/data
 
         startupProbe:
-          httpGet:
-            path: /nifi-api/system-diagnostics
+          tcpSocket:
             port: 8080
-            scheme: HTTP
           periodSeconds: 15
           failureThreshold: 40
-
         readinessProbe:
-          httpGet:
-            path: /nifi-api/system-diagnostics
+          tcpSocket:
             port: 8080
-            scheme: HTTP
           periodSeconds: 10
           failureThreshold: 12
-
-        livenessProbe:
-          httpGet:
-            path: /nifi-api/system-diagnostics
-            port: 8080
-            scheme: HTTP
-          periodSeconds: 30
-          failureThreshold: 3
-          initialDelaySeconds: 90
