@@ -16,4 +16,3 @@
 # COPY conf/nifi.properties /opt/nifi/nifi-current/conf/nifi.properties
 
 FROM apache/nifi:1.26.0
-COPY --chown=nifi:nifi conf/nifi.properties ${NIFI_HOME}/conf/nifi.properties
