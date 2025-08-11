@@ -46,6 +46,8 @@ pipeline {
             dir('k8s') {
                 sh 'aws eks update-kubeconfig --region $REGION --name nifi-eks'
                 sh 'kubectl apply -f namespace.yml'
+                sh 'kubectl apply -f service-headless.yml'
+                
                 sh '''
                 FS_ID=$(terraform -chdir=../terraform output -raw efs_id)
                 SC_NAME="efs-sc-${FS_ID}"
@@ -57,7 +59,6 @@ pipeline {
                     echo "efs ${SC_NAME} exists"
                 fi
                 '''
-                sh 'kubectl apply -f service-headless.yml'
 
                 sh 'sed "s/SC_NAME/${SC_NAME}/g" statefulset.yml | kubectl apply -f -'
                 sh 'kubectl apply -f service.yml'
