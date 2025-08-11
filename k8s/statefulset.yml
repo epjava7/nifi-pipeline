@@ -31,11 +31,16 @@ spec:
         volumeMounts:
         - name: nifi-data
           mountPath: /opt/nifi/data
-        # readinessProbe:
-        #   httpGet: { path: /nifi-api/system-diagnostics, port: 8080 }
-        #   initialDelaySeconds: 120
-        #   periodSeconds: 30
-        # livenessProbe:
-        #   httpGet: { path: /nifi-api/system-diagnostics, port: 8080 }
-        #   initialDelaySeconds: 180
-        #   periodSeconds: 30
+          
+        startupProbe:
+          tcpSocket: { port: 8080 }   
+          periodSeconds: 15
+
+        readinessProbe:
+          tcpSocket: { port: 8080 }
+          periodSeconds: 10
+
+        livenessProbe:
+          tcpSocket: { port: 8080 }
+          initialDelaySeconds: 600
+          periodSeconds: 20
