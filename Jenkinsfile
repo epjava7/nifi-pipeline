@@ -43,32 +43,50 @@ pipeline {
     stage('Deploy to EKS') {
         steps {
             withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
-            dir('k8s') {
-                sh 'aws eks update-kubeconfig --region $REGION --name nifi-eks'
-                sh 'kubectl apply -f namespace.yml'
-                sh 'kubectl apply -f service-headless.yml'
-                
-                sh '''
-                FS_ID=$(terraform -chdir=../terraform output -raw efs_id)
-                SC_NAME="efs-sc-${FS_ID}"
-                echo "EFS_ID = ${FS_ID}"
+                dir('k8s') {
+                    sh '''
+            set -euo pipefail
 
-                if ! kubectl get sc "${SC_NAME}" >/dev/null 2>&1; then
-                    sed -e "s/EFS_ID/${FS_ID}/g" -e "s/SC_NAME/${SC_NAME}/g" efs.yml | kubectl apply -f -
-                else
-                    echo "efs ${SC_NAME} exists"
-                fi
-                '''
+            aws eks update-kubeconfig --region $REGION --name nifi-eks
+            kubectl apply -f namespace.yml
+            kubectl apply -f service-headless.yml
 
-                sh 'sed "s/SC_NAME/${SC_NAME}/g" statefulset.yml | kubectl apply -f -'
-                sh 'kubectl apply -f service.yml'
+            FS_ID=$(terraform -chdir=../terraform output -raw efs_id)
+            SC_NAME="efs-sc-${FS_ID}"
+            echo "Using EFS ${FS_ID} with StorageClass ${SC_NAME}"
 
-                sh 'kubectl -n nifi rollout status sts/nifi --timeout=10m'
-                sh 'kubectl -n nifi get svc nifi-lb -o wide'
-            }
+            # If StatefulSet exists but PVC is bound to a DIFFERENT SC, replace it cleanly
+            if kubectl -n nifi get sts nifi >/dev/null 2>&1; then
+            PVC_SC=$(kubectl -n nifi get pvc nifi-data-nifi-0 -o jsonpath='{.spec.storageClassName}' 2>/dev/null || echo "")
+            if [ "${PVC_SC:-}" != "" ] && [ "${PVC_SC}" != "${SC_NAME}" ]; then
+                echo "StatefulSet exists with PVC SC='${PVC_SC}', needs '${SC_NAME}'. Recreating STS + PVC…"
+                kubectl -n nifi delete sts nifi --wait=true
+                kubectl -n nifi delete pvc -l app=nifi --wait=true || true
+            fi
+            fi
+
+            # Create StorageClass only if missing (SC params are immutable)
+            if ! kubectl get sc "${SC_NAME}" >/dev/null 2>&1; then
+            sed -e "s/EFS_ID/${FS_ID}/g" -e "s/SC_NAME/${SC_NAME}/g" efs.yml | kubectl apply -f -
+            else
+            echo "StorageClass ${SC_NAME} already exists; skipping"
+            fi
+
+            # (Re)create StatefulSet wired to SC_NAME
+            sed "s/SC_NAME/${SC_NAME}/g" statefulset.yml | kubectl apply -f -
+
+            # Public LB for access
+            kubectl apply -f service.yml
+
+            # Wait for rollout and print URL
+            kubectl -n nifi rollout status sts/nifi --timeout=10m
+            LB=$(kubectl -n nifi get svc nifi-lb -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            echo "NiFi URL: http://${LB}:8080/nifi"
+            '''
+                }
             }
         }
-    }
+}
 
 
     stage('K8s delete') {
