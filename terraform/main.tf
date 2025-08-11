@@ -157,15 +157,35 @@ resource "aws_efs_file_system" "nifi" {
   tags = { Name = "nifi-efs" }
 }
 
+resource "aws_security_group" "efs_sg" {
+  name        = "nifi-efs-sg"
+  description = "Allow NFS from VPC"
+  vpc_id      = aws_vpc.this.id
+
+  ingress {
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.this.cidr_block] 
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 resource "aws_efs_mount_target" "mt_a" {
   file_system_id  = aws_efs_file_system.nifi.id
   subnet_id       = aws_subnet.public_a.id
-  security_groups = [aws_eks_cluster.this.vpc_config[0].cluster_security_group_id]
+  security_groups = [aws_security_group.efs_sg.id]
 }
 
 resource "aws_efs_mount_target" "mt_c" {
   file_system_id  = aws_efs_file_system.nifi.id
   subnet_id       = aws_subnet.public_b.id
-  security_groups = [aws_eks_cluster.this.vpc_config[0].cluster_security_group_id]
+  security_groups = [aws_security_group.efs_sg.id]
 }
 

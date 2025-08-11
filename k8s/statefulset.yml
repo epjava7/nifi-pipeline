@@ -7,40 +7,51 @@ spec:
   serviceName: nifi-headless
   replicas: 1
   selector:
-    matchLabels: { app: nifi }
+    matchLabels:
+      app: nifi
 
   volumeClaimTemplates:
   - metadata:
       name: nifi-data
+      labels:
+        app: nifi
     spec:
-      storageClassName: SC_NAME      
-      accessModes: [ReadWriteMany]
+      storageClassName: SC_NAME         
+      accessModes: ["ReadWriteMany"]
       resources:
         requests:
           storage: 5Gi
 
   template:
     metadata:
-      labels: { app: nifi }
+      labels:
+        app: nifi
     spec:
+      terminationGracePeriodSeconds: 120
+
+      securityContext:
+        fsGroup: 1000
+        fsGroupChangePolicy: OnRootMismatch
+
       containers:
       - name: nifi
         image: 549103799643.dkr.ecr.us-west-1.amazonaws.com/nifi-1-26-0:latest
+        imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
+          name: http
+
         volumeMounts:
         - name: nifi-data
           mountPath: /opt/nifi/data
-          
+
         startupProbe:
-          tcpSocket: { port: 8080 }   
+          tcpSocket:
+            port: 8080
           periodSeconds: 15
-
+          failureThreshold: 30
         readinessProbe:
-          tcpSocket: { port: 8080 }
+          tcpSocket:
+            port: 8080
           periodSeconds: 10
-
-        livenessProbe:
-          tcpSocket: { port: 8080 }
-          initialDelaySeconds: 600
-          periodSeconds: 20
+          failureThreshold: 10
