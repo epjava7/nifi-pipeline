@@ -65,6 +65,9 @@ pipeline {
             kubectl apply -f k8s/service.yml
             kubectl apply -f k8s/statefulset.yml
             kubectl -n nifi rollout status statefulset/nifi --timeout=5m
+
+            LB=$(kubectl -n nifi get svc nifi-lb -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+            echo "NiFi URL: http://${LB}:8080/nifi"
             '''
         }
     }
@@ -141,21 +144,11 @@ pipeline {
       steps {
         withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
           input message: 'Delete K8s', ok: 'Delete'
-          sh '''#!/usr/bin/env bash
-set -euo pipefail
-CLUSTER=$(terraform -chdir=terraform output -raw cluster_name)
-
-aws eks update-kubeconfig --region "$REGION" --name "$CLUSTER"
-
-kubectl -n nifi scale sts nifi --replicas=0 || true
-kubectl -n nifi delete svc nifi-lb --ignore-not-found
-
-sleep 30
-
-kubectl -n nifi delete statefulset nifi --ignore-not-found --wait=true || true
-kubectl -n nifi delete pvc --all --ignore-not-found || true
-kubectl -n nifi delete ns nifi --ignore-not-found --wait=true || true
-'''
+          sh '''
+            kubectl -n nifi scale sts nifi --replicas=0 --timeout=120s || true
+            kubectl -n nifi delete sts nifi --cascade=orphan --wait=true || true
+            kubectl -n nifi delete svc nifi-lb nifi-headless || true
+            '''
         }
       }
     }
