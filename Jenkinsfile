@@ -3,6 +3,7 @@ pipeline {
   environment {
     REGION    = 'us-west-1'
     IMAGE_URI = '549103799643.dkr.ecr.us-west-1.amazonaws.com/nifi-1-26-0:latest'
+    KUBECONFIG = "${WORKSPACE}/.kube/config"
   }
 
   stages {
@@ -58,22 +59,16 @@ pipeline {
 //     }
 
     stage('Wire kubeconfig') {
-        steps {
-            sh '''
-            REGION=us-west-1
-            CLUSTER=nifi-eks
-
-            aws eks wait cluster-active --name "$CLUSTER" --region "$REGION"
-            aws eks describe-cluster --name "$CLUSTER" --region "$REGION" \
-                --query 'cluster.resourcesVpcConfig' --output table || true
-            mkdir -p "$WORKSPACE/.kube"
-            aws eks update-kubeconfig --name "$CLUSTER" --region "$REGION" --kubeconfig "$WORKSPACE/.kube/config"
-            export KUBECONFIG="$WORKSPACE/.kube/config"
-            kubectl version --short || true
-            kubectl cluster-info || true
-            kubectl get nodes || true
-            '''
-        }
+      steps {
+        sh '''
+          aws eks wait cluster-active --name nifi-eks --region us-west-1
+          mkdir -p "$WORKSPACE/.kube"
+          aws eks update-kubeconfig --name nifi-eks --region us-west-1 --kubeconfig "$WORKSPACE/.kube/config"
+          kubectl config use-context arn:aws:eks:us-west-1:549103799643:cluster/nifi-eks
+          kubectl cluster-info
+          kubectl get nodes
+        '''
+      }
     }
 
     stage('Deploy to EKS') {
