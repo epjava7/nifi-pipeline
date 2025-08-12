@@ -1,23 +1,23 @@
 # VPC 
 resource "aws_vpc" "this" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_support   = true
+  cidr_block = "10.0.0.0/16"
+  enable_dns_support = true
   enable_dns_hostnames = true
   tags = { Name = "nifi-vpc" }
 }
 
 resource "aws_subnet" "public_a" {
-  vpc_id                  = aws_vpc.this.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "us-west-1a"
+  vpc_id = aws_vpc.this.id
+  cidr_block = "10.0.1.0/24"
+  availability_zone = "us-west-1a"
   map_public_ip_on_launch = true
   tags = { Name = "nifi-a" }
 }
 
 resource "aws_subnet" "public_b" {
-  vpc_id                  = aws_vpc.this.id
-  cidr_block              = "10.0.2.0/24"
-  availability_zone       = "us-west-1c"
+  vpc_id = aws_vpc.this.id
+  cidr_block = "10.0.2.0/24"
+  availability_zone = "us-west-1c"
   map_public_ip_on_launch = true
   tags = { Name = "nifi-b" }
 }
@@ -37,11 +37,11 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table_association" "pub_a" {
-  subnet_id      = aws_subnet.public_a.id
+  subnet_id = aws_subnet.public_a.id
   route_table_id = aws_route_table.public.id
 }
 resource "aws_route_table_association" "pub_b" {
-  subnet_id      = aws_subnet.public_b.id
+  subnet_id = aws_subnet.public_b.id
   route_table_id = aws_route_table.public.id
 }
 
@@ -50,21 +50,21 @@ data "aws_iam_policy_document" "eks_trust" {
   statement {
     actions = ["sts:AssumeRole"]
     principals {
-      type        = "Service"
+      type = "Service"
       identifiers = ["eks.amazonaws.com"]
     }
   }
 }
 resource "aws_iam_role" "eks_cluster" {
-  name               = "eksClusterRole"
+  name = "eksClusterRole"
   assume_role_policy = data.aws_iam_policy_document.eks_trust.json
 }
 resource "aws_iam_role_policy_attachment" "eks_cluster_attach_main" {
-  role       = aws_iam_role.eks_cluster.name
+  role = aws_iam_role.eks_cluster.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 resource "aws_iam_role_policy_attachment" "eks_cluster_attach_service" {
-  role       = aws_iam_role.eks_cluster.name
+  role = aws_iam_role.eks_cluster.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSServicePolicy"
 }
 
@@ -72,29 +72,29 @@ data "aws_iam_policy_document" "eks_node_trust" {
   statement {
     actions = ["sts:AssumeRole"]
     principals {
-      type        = "Service"
+      type = "Service"
       identifiers = ["ec2.amazonaws.com"]
     }
   }
 }
 resource "aws_iam_role" "eks_node" {
-  name               = "eksNodeRole"
+  name = "eksNodeRole"
   assume_role_policy = data.aws_iam_policy_document.eks_node_trust.json
 }
 resource "aws_iam_role_policy_attachment" "node_worker" {
-  role       = aws_iam_role.eks_node.name
+  role = aws_iam_role.eks_node.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
 }
 resource "aws_iam_role_policy_attachment" "node_cni" {
-  role       = aws_iam_role.eks_node.name
+  role = aws_iam_role.eks_node.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
 }
 resource "aws_iam_role_policy_attachment" "node_ecr" {
-  role       = aws_iam_role.eks_node.name
+  role = aws_iam_role.eks_node.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
 resource "aws_iam_role_policy_attachment" "node_efs" {
-  role       = aws_iam_role.eks_node.name
+  role = aws_iam_role.eks_node.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEFSCSIDriverPolicy"
 }
 
@@ -102,12 +102,12 @@ resource "aws_iam_role_policy_attachment" "node_efs" {
 # EKS 
 
 resource "aws_eks_cluster" "this" {
-  name     = "nifi-eks"
+  name = "nifi-eks"
   role_arn = aws_iam_role.eks_cluster.arn
   version  = "1.30"
 
   vpc_config {
-    subnet_ids              = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    subnet_ids = [aws_subnet.public_a.id, aws_subnet.public_b.id]
     endpoint_public_access  = true
     endpoint_private_access = false
   }
@@ -119,20 +119,20 @@ resource "aws_eks_cluster" "this" {
 }
 
 resource "aws_eks_node_group" "default" {
-  cluster_name    = aws_eks_cluster.this.name
+  cluster_name = aws_eks_cluster.this.name
   node_group_name = "nodegroup-ec2"
-  node_role_arn   = aws_iam_role.eks_node.arn
+  node_role_arn = aws_iam_role.eks_node.arn
 
   subnet_ids = [aws_subnet.public_a.id, aws_subnet.public_b.id]
 
   scaling_config {
     desired_size = 2
-    max_size     = 2
-    min_size     = 1
+    max_size = 2
+    min_size = 1
   }
 
   instance_types = ["t3.small"]
-  ami_type       = "AL2_x86_64"
+  ami_type = "AL2_x86_64"
 
   depends_on = [
     aws_iam_role_policy_attachment.node_worker,
@@ -145,7 +145,7 @@ resource "aws_eks_node_group" "default" {
 # EFS CSI driver
 resource "aws_eks_addon" "efs_csi" {
   cluster_name = aws_eks_cluster.this.name
-  addon_name   = "aws-efs-csi-driver"
+  addon_name = "aws-efs-csi-driver"
 }
 
 
@@ -158,34 +158,34 @@ resource "aws_efs_file_system" "nifi" {
 }
 
 resource "aws_security_group" "efs_sg" {
-  name        = "nifi-efs-sg"
+  name = "nifi-efs-sg"
   description = "Allow NFS from VPC"
-  vpc_id      = aws_vpc.this.id
+  vpc_id = aws_vpc.this.id
 
   ingress {
-    from_port   = 2049
-    to_port     = 2049
-    protocol    = "tcp"
-    cidr_blocks = [aws_vpc.this.cidr_block] 
+    from_port = 2049
+    to_port = 2049
+    protocol = "tcp"
+    cidr_blocks = [aws_vpc.this.cidr_block]
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
 resource "aws_efs_mount_target" "mt_a" {
-  file_system_id  = aws_efs_file_system.nifi.id
-  subnet_id       = aws_subnet.public_a.id
+  file_system_id = aws_efs_file_system.nifi.id
+  subnet_id = aws_subnet.public_a.id
   security_groups = [aws_security_group.efs_sg.id]
 }
 
 resource "aws_efs_mount_target" "mt_c" {
-  file_system_id  = aws_efs_file_system.nifi.id
-  subnet_id       = aws_subnet.public_b.id
+  file_system_id = aws_efs_file_system.nifi.id
+  subnet_id = aws_subnet.public_b.id
   security_groups = [aws_security_group.efs_sg.id]
 }
 
