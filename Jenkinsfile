@@ -57,10 +57,29 @@ pipeline {
 //       }
 //     }
 
+    stage('Wire kubeconfig') {
+        steps {
+            sh '''
+            REGION=us-west-1
+            CLUSTER=nifi-eks
+
+            aws eks wait cluster-active --name "$CLUSTER" --region "$REGION"
+            aws eks describe-cluster --name "$CLUSTER" --region "$REGION" \
+                --query 'cluster.resourcesVpcConfig' --output table || true
+            mkdir -p "$WORKSPACE/.kube"
+            aws eks update-kubeconfig --name "$CLUSTER" --region "$REGION" --kubeconfig "$WORKSPACE/.kube/config"
+            export KUBECONFIG="$WORKSPACE/.kube/config"
+            kubectl version --short || true
+            kubectl cluster-info || true
+            kubectl get nodes || true
+            '''
+        }
+    }
+
     stage('Deploy to EKS') {
         steps {
             sh '''
-            # kubectl apply -f k8s/efs.yml || true
+            kubectl apply -f k8s/efs.yml || true
             kubectl apply -f k8s/namespace.yml
             kubectl apply -f k8s/service.yml
             kubectl apply -f k8s/statefulset.yml
