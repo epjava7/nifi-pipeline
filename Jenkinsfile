@@ -74,8 +74,8 @@ pipeline {
     stage('Deploy to EKS') {
         steps {
             sh '''
-            kubectl apply -f k8s/efs.yml || true
             kubectl apply -f k8s/namespace.yml
+            kubectl apply -f k8s/efs.yml || true
             kubectl apply -f k8s/service.yml
             kubectl apply -f k8s/statefulset.yml
             kubectl -n nifi rollout status statefulset/nifi --timeout=5m
