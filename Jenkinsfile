@@ -3,6 +3,7 @@ pipeline {
   environment {
     REGION    = 'us-west-1'
     IMAGE_URI = '549103799643.dkr.ecr.us-west-1.amazonaws.com/nifi-1-26-0:latest'
+    KUBECONFIG = "${WORKSPACE}/.kube/config"
   }
 
   stages {
@@ -52,26 +53,26 @@ pipeline {
     // }
 
     stage('Wire kubeconfig') {
-        steps {
-            withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
-                sh '''
-                    export REGION=us-west-1
-                    export CLUSTER=nifi-eks
-                    export KUBECONFIG="$WORKSPACE/.kube/config"
-                    mkdir -p "$(dirname "$KUBECONFIG")"
-                    export NO_PROXY="127.0.0.1,localhost,.cluster.local,.svc,.eks.amazonaws.com,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
-                    export no_proxy="$NO_PROXY"
-                    aws eks wait cluster-active --name "$CLUSTER" --region "$REGION"
-                    aws eks update-kubeconfig --name "$CLUSTER" --region "$REGION" \
-                    --kubeconfig "$KUBECONFIG" \
-                    --alias "arn:aws:eks:$REGION:$(aws sts get-caller-identity --query Account --output text):cluster/$CLUSTER"
-                    kubectl config use-context "arn:aws:eks:$REGION:$(aws sts get-caller-identity --query Account --output text):cluster/$CLUSTER"
-                    kubectl cluster-info
-                    kubectl get nodes
-                '''
-                }
-            }
+      steps {
+        withCredentials([[$class:'AmazonWebServicesCredentialsBinding', credentialsId:'aws-devops']]) {
+          sh '''
+            export REGION=us-west-1
+            export CLUSTER=nifi-eks
+            rm -f "$KUBECONFIG" || true
+            mkdir -p "$(dirname "$KUBECONFIG")"
+            export NO_PROXY="127.0.0.1,localhost,.cluster.local,.svc,.eks.amazonaws.com,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+            export no_proxy="$NO_PROXY"
+            aws eks wait cluster-active --name "$CLUSTER" --region "$REGION"
+            ACC=$(aws sts get-caller-identity --query Account --output text)
+            aws eks update-kubeconfig --name "$CLUSTER" --region "$REGION" --kubeconfig "$KUBECONFIG" --alias "arn:aws:eks:$REGION:$ACC:cluster/$CLUSTER"
+            kubectl config use-context "arn:aws:eks:$REGION:$ACC:cluster/$CLUSTER"
+            kubectl config current-context
+            kubectl cluster-info
+            kubectl get nodes
+          '''
         }
+      }
+    }
 
 
     stage('Deploy to EKS') {
