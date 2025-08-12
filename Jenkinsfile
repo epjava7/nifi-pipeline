@@ -113,13 +113,13 @@ pipeline {
     }
   }
 
-  post {
-    always {
-        sh '''
-        kubectl -n nifi scale sts nifi --replicas=0 --timeout=120s || true
-        kubectl -n nifi delete sts nifi --cascade=orphan --wait=true || true
-        kubectl -n nifi delete svc nifi-lb nifi-headless || true
-        '''
-    }
-  }
+//   post {
+//     always {
+//         sh '''
+//         kubectl -n nifi scale sts nifi --replicas=0 --timeout=120s || true
+//         kubectl -n nifi delete sts nifi --cascade=orphan --wait=true || true
+//         kubectl -n nifi delete svc nifi-lb nifi-headless || true
+//         '''
+//     }
+//   }
 }
