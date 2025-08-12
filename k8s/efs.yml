@@ -4,7 +4,7 @@ metadata:
   name: SC_NAME            
 provisioner: efs.csi.aws.com
 parameters:
-  fileSystemId: EFS_ID
+  fileSystemId: fs-0fa9023fb4231a41b
   directoryPerms: "700"
   provisioningMode: efs-ap
 reclaimPolicy: Delete

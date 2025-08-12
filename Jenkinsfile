@@ -19,8 +19,8 @@ pipeline {
     stage('docker prune') {
         steps {
             sh '''
-            docker system prune -af || true
-            docker builder prune -af || true
+            docker system prune -af
+            docker builder prune -af
             '''
         }
     }
