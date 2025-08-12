@@ -33,7 +33,7 @@ spec:
     - metadata:
         name: nifi-data
       spec:
-        storageClassName: efs-sc-nifi
+        storageClassName: SC_NAME
         accessModes: ["ReadWriteMany"]
         resources:
           requests:
